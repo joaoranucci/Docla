@@ -20,20 +20,6 @@
     },
     {
       "parameters": {
-        "jsCode": "// Captura os dados que vieram do Webhook (ou do nó anterior)\nconst dadosIniciais = $node[\"Webhook1\"].json.body;\n// Captura o que o código processou (usuário/agente)\nconst usuarioAgente = $input.item.json;\n\nreturn {\n  body: dadosIniciais, // Devolve o telefone e texto original\n  user: usuarioAgente  // Mantém os dados do agente se precisar\n};"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3168,
-        576
-      ],
-      "id": "70863073-6992-4972-8a4f-c583455f9dc5",
-      "name": "Code in JavaScript1",
-      "disabled": true
-    },
-    {
-      "parameters": {
         "method": "POST",
         "url": "https://docla.sz.chat/api/v4/auth/login",
         "sendBody": true,
@@ -69,79 +55,13 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"platform_id\": \"{{ $json.body.platform_id }}\",\n  \"channel_id\": \"{{ $json.body.channel_id }}\",\n  \"agent_id\": \"{{ $json.body.agent_id }}\",\n  \"type\": \"text\",\n  \"is_hsm\": true,\n  \"hsm_template_name\": \"{{ $json.body.hsm_template_name }}\",\n  \"hsm_placeholders\": {{ JSON.stringify($json.body.hsm_placeholders) }},\n  \"ignore_bot\": false,\n  \"force\": true\n}",
+        "jsonBody": "={\n  \"channel_id\": \"{{ $json.channel_id }}\",\n  \"platform_id\": \"{{ $json.platform_id }}\",\n  \"type\": \"text\",\n  \"is_hsm\": true,\n  \"hsm_template_name\": \"{{ $json.hsm_template_name }}\",\n  \"hsm_placeholders\": {{ JSON.stringify($json.hsm_placeholders) }},\n  \"force\": true\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        3392,
-        576
-      ],
-      "id": "7cc0e26b-1a31-4749-b4a5-1e718fe105d6",
-      "name": "script de envio",
-      "retryOnFail": true,
-      "notesInFlow": false,
-      "alwaysOutputData": false,
-      "executeOnce": false,
-      "waitBetweenTries": 5000,
-      "maxTries": 5,
-      "disabled": true,
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "options": {}
-      },
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [
-        2832,
-        448
-      ],
-      "id": "871c49e5-2197-4e5d-95db-c0ac306402a2",
-      "name": "Loop Over Items",
-      "disabled": true
-    },
-    {
-      "parameters": {},
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        2656,
-        384
-      ],
-      "id": "1ee74be1-52b5-43eb-a9f7-21cf5000aaf3",
-      "name": "Wait",
-      "webhookId": "cd17bfad-fc07-4e8a-acac-ef2b709bcb38",
-      "disabled": true
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://docla.sz.chat/api/v4/message/send",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $node[\"Login\"].json[\"token\"] }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"platform_id\": \"{{ $json.platform_id }}\",\n  \"channel_id\": \"67e6b384c5e6300019ecdacb\",\n  \"agent_id\": \"69b1aba30e4678b22a079e10\",\n  \"type\": \"text\",\n  \"is_hsm\": true,\n  \"hsm_template_name\": \"{{ $json.hsm_template_name }}\",\n  \"hsm_placeholders\": {{ JSON.stringify($json.hsm_placeholders) }},\n  \"force\": true\n}\n",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        2832,
+        2864,
         64
       ],
       "id": "e4fdd297-a6e5-4437-8749-3ee346fdf7b6",
@@ -155,20 +75,8 @@
       "onError": "continueRegularOutput"
     },
     {
-      "parameters": {},
-      "type": "n8n-nodes-base.noOp",
-      "name": "Replace Me",
-      "typeVersion": 1,
-      "position": [
-        2464,
-        608
-      ],
-      "id": "3728c177-32be-43a6-8bb1-1ea743aea348",
-      "disabled": true
-    },
-    {
       "parameters": {
-        "jsCode": "const entrada = $input.item.json;\n\nconst lista = Array.isArray(entrada.body) ? entrada.body : [entrada];\n\nreturn lista.map(item => ({ json: item }));"
+        "jsCode": "// 1. Dados do Login (Onde está o Token)\nconst loginData = $input.item.json;\n\n// 2. Busca o Webhook de forma absoluta (isso evita o n8n se perder)\nconst dadosWebhook = $items(\"Webhook1\")[0].json;\n\n// 3. Tenta buscar o channel_id que veio do Insomnia\nlet channelId = dadosWebhook.body?.channel_id || dadosWebhook.channel_id;\n\n// 4. PLANO B (SALVA-VIDAS): Se não veio no Insomnia, usa o ID padrão do seu print\nif (!channelId) {\n    channelId = \"67e6b384c5e6300019ecdacb\"; \n}\n\n// 5. Junta tudo e passa para frente\nreturn {\n    json: {\n        channel_id: channelId,\n        token: loginData.token\n    }\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -177,20 +85,21 @@
         64
       ],
       "id": "b2bd6a81-603b-4af0-bf6e-9d162ba538a0",
-      "name": "Code in JavaScript2"
+      "name": "primeiro nó",
+      "disabled": true
     },
     {
       "parameters": {
-        "jsCode": "const item = $json;\n\n// TELEFONE\nlet foneRaw = item.phone || item.whatsapp || item.platform_id || item.telefone || \"\";\nconst platform_id = foneRaw.toString().replace(/\\D/g, \"\");\n\n// IDENTIFICAÇÃO\nlet identificador = (item.text || item.motivo || item.tag || \"\").toLowerCase();\nlet nomeCliente = item.customerName || item.name || \"Cliente\";\n\nlet templateEscolhido = \"inicio_conversa_1\";\nlet placeholders = [];\n\n// REGRAS\nif (identificador.includes(\"certificado\") || identificador.includes(\"vídeo\")) {\n    templateEscolhido = \"chamada_certificado_digital\";\n    placeholders = [nomeCliente, \"Equipe Docla\"];\n} \nelse if (identificador.includes(\"folha\") || identificador.includes(\"pagamento\")) {\n    templateEscolhido = \"informacoes_folha\";\n    placeholders = [nomeCliente];\n}\nelse if (identificador.includes(\"assinatura\") || identificador.includes(\"sign\")) {\n    templateEscolhido = \"sign_assinatura\";\n    placeholders = [nomeCliente, \"Contrato.pdf\", \"1234\", \"https://fortics.com.br\"];\n}\nelse if (identificador.includes(\"triagem\") || identificador.includes(\"ajustar\")) {\n    templateEscolhido = \"saudacao_triagem\";\n    placeholders = [\"Equipe Docla\"];\n}\nelse if (identificador.includes(\"cobranca\") || identificador.includes(\"atraso\")) {\n    templateEscolhido = \"cobranca\";\n    placeholders = [nomeCliente, \"Camile\"];\n}\nelse if (identificador.includes(\"cancelamento\")) {\n    templateEscolhido = \"cancelamento\";\n}\nelse if (identificador.includes(\"fiscal\") || identificador.includes(\"suporte\")) {\n    templateEscolhido = \"fiscal\";\n    placeholders = [\"Arthur\"];\n}\nelse if (identificador.includes(\"notas\") || identificador.includes(\"emissão\")) {\n    templateEscolhido = \"solicitacao_de_notas_fiscal\";\n}\nelse if (identificador.includes(\"cnpj\") || identificador.includes(\"resolver\")) {\n    templateEscolhido = \"comeco\";\n}\n\n// 🔥 VALIDAÇÃO CRÍTICA\nif (!platform_id || platform_id.length < 10) {\n    return {\n        json: {\n            skip: true,\n            motivo: \"Sem telefone válido\"\n        }\n    };\n}\n\n// RETORNO\nreturn {\n    json: {\n        platform_id: platform_id.startsWith(\"55\") ? platform_id : \"55\" + platform_id,\n        hsm_template_name: templateEscolhido,\n        hsm_placeholders: placeholders,\n        contact_name: nomeCliente\n    }\n};"
+        "jsCode": "const itensWebhook = $items(\"Webhook1\");\nconst dadosLogin = $items(\"Login\")[0].json;\n\nreturn itensWebhook.map(item => {\n    const corpo = item.json.body || item.json;\n    \n    // 1. Telefone\n    let foneRaw = corpo.platform_id || corpo.phone || \"\";\n    let platform_id = foneRaw.toString().replace(/\\D/g, \"\");\n    if (platform_id && !platform_id.startsWith(\"55\")) platform_id = \"55\" + platform_id;\n\n    // 2. Dados da mensagem\n    const textoOriginal = (corpo.text || \"\").toString();\n    const textoLower = textoOriginal.toLowerCase();\n    const nomeCliente = corpo.customerName || \"Cliente\";\n    const linkExtraido = textoOriginal.match(/https?:\\/\\/\\S+/)?.[0] || \"\";\n\n    // 3. LÓGICA AUTOMÁTICA COM SEUS TEMPLATES REAIS\n    let templateEscolhido = \"\";\n    let placeholders = [];\n\n    if (textoLower.includes(\"folha\") || textoLower.includes(\"pagamento\")) {\n        templateEscolhido = \"informacoes_folha\"; // Nome real do seu arquivo\n        placeholders = [nomeCliente]; // Este template só tem 1 variável\n    } \n    else if (textoLower.includes(\"certificado\") || textoLower.includes(\"vídeo\")) {\n        templateEscolhido = \"chamada_certificado_digital\"; // Nome real do seu arquivo\n        placeholders = [nomeCliente, \"Suporte Docla\"]; // Tem 2 variáveis\n    }\n    else if (textoLower.includes(\"cancelamento\")) {\n        templateEscolhido = \"cancelamento_novo_imagem\"; // Nome real do seu arquivo\n        placeholders = [nomeCliente, linkExtraido]; // Tem 2 variáveis\n    }\n    else {\n        // Se não encontrar nada, usa o de certificado como padrão ou outro que você use muito\n        templateEscolhido = \"chamada_certificado_digital\"; \n        placeholders = [nomeCliente, \"Equipe\"];\n    }\n\n    return {\n        json: {\n            platform_id: platform_id,\n            channel_id: corpo.channel_id || \"67e6b384c5e6300019ecdacb\",\n            hsm_template_name: templateEscolhido,\n            hsm_placeholders: placeholders,\n            token: dadosLogin.token\n        }\n    };\n});"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2544,
+        2560,
         64
       ],
       "id": "db9480dc-b22b-43eb-baca-7e0ec2203986",
-      "name": "Code in JavaScript"
+      "name": "segundo nó"
     }
   ],
   "pinData": {},
@@ -206,49 +115,15 @@
         ]
       ]
     },
-    "Code in JavaScript1": {
-      "main": [
-        [
-          {
-            "node": "script de envio",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Login": {
       "main": [
         [
           {
-            "node": "Code in JavaScript2",
+            "node": "primeiro nó",
             "type": "main",
             "index": 0
           }
         ]
-      ]
-    },
-    "Loop Over Items": {
-      "main": [
-        [
-          {
-            "node": "Wait",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Replace Me",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Wait": {
-      "main": [
-        []
       ]
     },
     "script de envio1": {
@@ -256,29 +131,18 @@
         []
       ]
     },
-    "Replace Me": {
+    "primeiro nó": {
       "main": [
         [
           {
-            "node": "Loop Over Items",
+            "node": "segundo nó",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Code in JavaScript2": {
-      "main": [
-        [
-          {
-            "node": "Code in JavaScript",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Code in JavaScript": {
+    "segundo nó": {
       "main": [
         [
           {
@@ -296,7 +160,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "58afe3df-7b1e-40d2-8234-c5fd0a83dc61",
+  "versionId": "9b235443-3318-4afa-a45a-f420f1db25d5",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "1bda00193ffd0417037785bdeebe54b6ac8d5d646a23f3289d14b3063c757d61"
